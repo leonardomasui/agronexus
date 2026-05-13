@@ -16,14 +16,29 @@ interface WeatherData {
 export default function WeatherWidget() {
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cityName, setCityName] = useState("Piracicaba");
 
   useEffect(() => {
     async function fetchWeather() {
       try {
-        // Coordenadas de Piracicaba, SP
+        const localUser = localStorage.getItem("agronexus_user");
+        let lat = -22.725;
+        let lon = -47.647;
+        let name = "Piracicaba";
+
+        if (localUser) {
+          const user = JSON.parse(localUser);
+          if (user.municipio?.lat && user.municipio?.lon) {
+            lat = user.municipio.lat;
+            lon = user.municipio.lon;
+            name = user.municipio.nome;
+          }
+        }
+        setCityName(name);
+
         const url = process.env.NEXT_PUBLIC_API_URL 
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/clima/previsao?lat=-22.725&lon=-47.647&days=1`
-          : `http://127.0.0.1:3001/api/clima/previsao?lat=-22.725&lon=-47.647&days=1`;
+          ? `${process.env.NEXT_PUBLIC_API_URL}/api/clima/previsao?lat=${lat}&lon=${lon}&days=1`
+          : `http://127.0.0.1:3001/api/clima/previsao?lat=${lat}&lon=${lon}&days=1`;
         
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Erro ao buscar clima: ${res.statusText}`);
@@ -75,7 +90,7 @@ export default function WeatherWidget() {
           <div className="flex flex-col">
             <div className="mb-1">
               <h3 className="font-bold text-white text-sm uppercase tracking-wider">
-                Piracicaba - {new Date().toLocaleDateString('pt-BR')}
+                {cityName} - {new Date().toLocaleDateString('pt-BR')}
               </h3>
             </div>
             

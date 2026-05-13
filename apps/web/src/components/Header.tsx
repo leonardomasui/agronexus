@@ -48,9 +48,12 @@ export default function Header() {
             <BellRing size={20} />
             <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-agro-blue"></span>
           </Link>
-          <button className="p-2 rounded-full bg-agro-green/80 border border-white/20 shadow-sm">
+          <Link 
+            href="/configuracoes"
+            className="p-2 rounded-full bg-agro-green/80 border border-white/20 shadow-sm hover:bg-agro-green transition-colors"
+          >
             <User size={20} />
-          </button>
+          </Link>
         </div>
       </div>
     </header>

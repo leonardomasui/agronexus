@@ -1,64 +1,58 @@
-# 📁 AgroNexus — Documento de Transição de Contexto (Atualizado)
+# AgroNexus — Relatório de Transferência de Projeto (Handoff)
 
-Este documento garante que você possa continuar o desenvolvimento do **AgroNexus** em outra máquina com total clareza do progresso atual.
+Este documento contém tudo o que foi desenvolvido até agora para garantir que o projeto possa ser continuado sem perdas em qualquer outra máquina.
 
----
+## 🚀 Progresso Atual (Sprint 4 Concluída)
 
-## 🛠️ Stack Tecnológica
-- **Estrutura**: Monorepo (NPM Workspaces)
-- **Frontend**: Next.js 14, TailwindCSS, Lucide Icons
-- **Backend**: Express.js (TypeScript)
-- **Banco de Dados**: Supabase (PostgreSQL)
-- **Integrações**: INMET (Alertas via RSS), Open-Meteo (Previsão 30 dias) e IBGE (Municípios)
+### 1. Módulo de Onboarding e Configurações
+- **Fluxo de 3 Etapas**: Seleção de município, Culturas e Animais.
+- **Sincronização de Localização**: O usuário pode trocar de cidade na página de **Configurações**.
+- **Geocoding**: A busca de cidade agora obtém automaticamente Latitude e Longitude (via API Open-Meteo) para alimentar o sistema de clima.
+- **Persistência**: Geração de UUID salvo no `localStorage` e sincronização assíncrona com Supabase.
 
----
+### 2. Gestão de Pecuária (Rebanho) 
+- **CRUD Completo**: Cadastro, Listagem, Edição e Exclusão de lotes de animais.
+- **Campos Avançados**: Suporte total para Data de Entrada, Última Visita Veterinária e Motivo da Visita.
+- **Correção de Datas**: Implementada lógica para evitar deslocamento de fuso horário (problema de mostrar o dia anterior).
+- **Checklist de Rotina**: Sistema de tarefas diárias integrado a cada card de animal com persistência.
 
-## ✅ Funcionalidades Finalizadas nesta Sessão
-1. **Navegação Inteligente**: 
-   - O ícone de **Sino** no cabeçalho agora abre a **Central de Avisos**.
-   - A aba inferior "Avisos" foi substituída por **Clima** (Previsão Mensal).
-2. **Central de Avisos (Notificações)**:
-   - Filtros por: Todos, Clima, Lembretes e Eventos.
-   - Opção de **Marcar como Lido / Não Lido** com persistência no banco para Agenda.
-   - Cores específicas: Verde (Eventos), Azul (Lembretes), Vermelho/Laranja (Alertas).
-3. **Previsão Climática Avançada**:
-   - Página de 30 dias com Temperatura (Mín/Máx), **Probabilidade de Chuva (%)**, **Índice UV** (com cores de risco) e **Incidência Solar (kWh/m²)**.
-   - Card de clima na Home agora é clicável e leva para esta página.
-4. **CRUD de Lavouras com UX Premium**:
-   - Edição de culturas e cálculo automático de colheita.
-   - **Exclusão com "Undo" (Desfazer)**: O card some na hora, mas você tem 2 segundos para desfazer antes da deleção real.
+### 3. Sistema de Clima e UI
+- **Dashboard Dinâmico**: O WeatherWidget na Home e a página de Clima agora são 100% sincronizados com a cidade selecionada pelo usuário.
+- **Navegação**: Menu inferior funcional para Início, Clima, Impactos, Notícias e Agenda.
+- **Layout**: Totalmente responsivo e mobile-first com Rich Aesthetics.
 
 ---
 
-## 🚀 Prompt para colar no Antigravity na Máquina Nova:
+## 🛠️ Requisitos para Continuar
 
-> "Olá, Antigravity! Estou continuando o projeto **AgroNexus** nesta máquina. O código está no GitHub: https://github.com/leonardomasui/agronexus.
-> 
-> **Resumo do Estado Atual:** 
-> - O monorepo está configurado e a API (porta 3001) já conversa com o Supabase.
-> - Finalizamos a Central de Avisos (acessada pelo Sino) e a página de Clima Mensal (30 dias).
-> - Implementamos o CRUD completo de Lavouras com sistema de 'Undo' na exclusão.
-> - O Dashboard está sincronizado e reflete os hectares totais e animais cadastrados.
-> 
-> **Próximos Passos Sugeridos:**
-> 1. Validar as variáveis de ambiente (`.env` na API e `.env.local` na Web).
-> 2. Implementar a finalização de ciclos de colheita (mover cultura para histórico).
-> 3. Implementar a aba 'Pecuária' com persistência completa das rotinas no banco.
-> 
-> Analise a estrutura atual e vamos continuar de onde paramos!"
+### Variáveis de Ambiente (.env)
+Você precisará configurar as seguintes variáveis na raiz do projeto:
+```env
+# API
+SUPABASE_URL=sua_url_supabase
+SUPABASE_ANON_KEY=sua_chave_anonima
+API_PORT=3001
+
+# Web
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+### Banco de Dados
+A estrutura completa e consolidada está em `apps/api/src/database/migrations/001_initial_schema.sql`.
+1. Execute o script SQL consolidado para criar todas as tabelas e permissões.
+2. **IMPORTANTE**: Sempre que adicionar colunas via migração, execute `NOTIFY pgrst, 'reload schema';` no SQL Editor do Supabase para atualizar o cache da API.
+
+### Comandos Úteis
+1. **Instalar Dependências**: `npm install` na raiz.
+2. **Rodar o Projeto Completo**: `npm run dev` na raiz (inicia API e Web simultaneamente).
+3. **Servidor Web**: `cd apps/web && npm run dev` (Porta 3002).
+4. **Servidor API**: `cd apps/api && npm run dev` (Porta 3001).
 
 ---
 
-## 🔑 Configuração de Ambiente (Obrigatório)
-Ao clonar, certifique-se de configurar:
-1. `apps/api/.env`:
-   ```
-   SUPABASE_URL=seu_url
-   SUPABASE_KEY=sua_chave
-   PORT=3001
-   ```
-2. `apps/web/.env.local`:
-   ```
-   NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
-   ```
-3. Rodar `npm install` na raiz para instalar todas as dependências do monorepo.
+## 📌 Próximos Passos Sugeridos
+1. **Notícias Reais**: Implementar a rota `/api/noticias` no backend para consumir um RSS real (ex: Canal Rural).
+2. **Lógica de Impactos**: Desenvolver o cálculo de risco na página de Impactos cruzando clima e solo.
+3. **Relatórios**: Implementar exportação de PDF para os lotes de animais e histórico de produção.
+
+**Documento atualizado em 13/05/2026 às 17:20** — *AgroNexus Team*

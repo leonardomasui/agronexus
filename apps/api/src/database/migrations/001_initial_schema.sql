@@ -32,6 +32,8 @@ create table if not exists propriedades (
   latitude          numeric(10, 7),
   longitude         numeric(10, 7),
   area_ha           numeric(12, 4),
+  itens_culturas    text[] default '{}',
+  itens_animais     text[] default '{}',
   created_at        timestamptz default now(),
   updated_at        timestamptz default now()
 );
@@ -58,15 +60,29 @@ create table if not exists culturas (
 -- TABELA: animais
 -- ============================================================
 create table if not exists animais (
-  id             uuid primary key default uuid_generate_v4(),
-  propriedade_id uuid references propriedades(id) on delete cascade,
-  especie        text not null,
-  raca           text,
-  quantidade     integer not null default 1,
-  data_registro  date default current_date,
-  observacoes    text,
-  created_at     timestamptz default now(),
-  updated_at     timestamptz default now()
+  id                uuid primary key default uuid_generate_v4(),
+  propriedade_id    uuid references propriedades(id) on delete cascade,
+  especie           text not null,
+  raca              text,
+  quantidade        integer not null default 1,
+  data_registro     date default current_date,
+  data_entrada      date,
+  ultima_visita_vet date,
+  motivo_visita_vet text,
+  observacoes       text,
+  created_at        timestamptz default now(),
+  updated_at        timestamptz default now()
+);
+
+-- ============================================================
+-- TABELA: rotinas_animais
+-- ============================================================
+create table if not exists rotinas_animais (
+  id          uuid primary key default uuid_generate_v4(),
+  animal_id   uuid references animais(id) on delete cascade,
+  tarefa      text not null,
+  concluido   boolean default false,
+  created_at  timestamptz default now()
 );
 
 -- ============================================================

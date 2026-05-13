@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Sprout, CloudSun, CalendarDays, PawPrint } from "lucide-react";
+import { Home, CloudSun, BarChart3, Newspaper, CalendarDays } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   const links = [
     { name: "Início", href: "/", icon: Home },
-    { name: "Lavouras", href: "/lavouras", icon: Sprout },
-    { name: "Pecuária", href: "/animais", icon: PawPrint },
-    { name: "Agenda", href: "/agenda", icon: CalendarDays },
     { name: "Clima", href: "/clima", icon: CloudSun },
+    { name: "Impactos", href: "/impactos", icon: BarChart3 },
+    { name: "Notícias", href: "/noticias", icon: Newspaper },
+    { name: "Agenda", href: "/agenda", icon: CalendarDays },
   ];
 
   return (

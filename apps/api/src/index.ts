@@ -8,6 +8,7 @@ import climaRouter from './routes/clima.route';
 import culturasRouter from './routes/culturas.route';
 import animaisRouter from './routes/animais.route';
 import agendaRouter from './routes/agenda.route';
+import onboardingRouter from './routes/onboarding.route';
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
@@ -27,6 +28,7 @@ app.use('/api/clima', climaRouter);
 app.use('/api/culturas', culturasRouter);
 app.use('/api/animais', animaisRouter);
 app.use('/api/agenda', agendaRouter);
+app.use('/api/onboarding', onboardingRouter);
 
 // 404
 app.use((_req, res) => {

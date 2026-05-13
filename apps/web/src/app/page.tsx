@@ -2,9 +2,10 @@
 
 import Header from "@/components/Header";
 import WeatherWidget from "@/components/WeatherWidget";
-import { Tractor, Sprout, PawPrint, Bird, BellRing } from "lucide-react";
+import { Tractor, Sprout, PawPrint, Bird, BellRing, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface AgendaItem {
   id: string;
@@ -15,6 +16,8 @@ interface AgendaItem {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [lembretes, setLembretes] = useState<AgendaItem[]>([]);
   const [resumoCultura, setResumoCultura] = useState({ ativas: 0, hectares: 0 });
   const [resumoAnimais, setResumoAnimais] = useState({ total: 0, lotes: 0 });
@@ -22,6 +25,14 @@ export default function Home() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
 
   useEffect(() => {
+    // 0. Verificar Onboarding
+    const user = localStorage.getItem("agronexus_user");
+    if (!user) {
+      router.push("/onboarding");
+      return;
+    }
+    setCheckingAuth(false);
+
     // 1. Buscar Agenda
     fetch(`${apiUrl}/api/agenda`)
       .then((res) => res.json())
@@ -51,7 +62,15 @@ export default function Home() {
         setResumoAnimais({ total, lotes: data.length });
       })
       .catch(() => {/* silencia erros */});
-  }, []);
+  }, [router, apiUrl]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-agro-light flex items-center justify-center">
+        <Loader2 className="animate-spin text-agro-blue" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-agro-light">

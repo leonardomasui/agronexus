@@ -16,13 +16,33 @@ interface WeatherData {
 export default function ClimaPage() {
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cityName, setCityName] = useState("Piracicaba");
+  const [uf, setUf] = useState("SP");
 
   useEffect(() => {
     async function fetchWeather() {
       try {
+        const localUser = localStorage.getItem("agronexus_user");
+        let lat = -22.725;
+        let lon = -47.647;
+        let name = "Piracicaba";
+        let state = "SP";
+
+        if (localUser) {
+          const user = JSON.parse(localUser);
+          if (user.municipio?.lat && user.municipio?.lon) {
+            lat = user.municipio.lat;
+            lon = user.municipio.lon;
+            name = user.municipio.nome;
+            state = user.municipio.uf;
+          }
+        }
+        setCityName(name);
+        setUf(state);
+
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
         // Buscando 30 dias de previsão
-        const res = await fetch(`${baseUrl}/api/clima/previsao?lat=-22.725&lon=-47.647&days=30`);
+        const res = await fetch(`${baseUrl}/api/clima/previsao?lat=${lat}&lon=${lon}&days=30`);
         if (res.ok) {
           const json = await res.json();
           setData(json);
@@ -57,7 +77,7 @@ export default function ClimaPage() {
       <div className="px-6 py-6 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-agro-black">Previsão Mensal</h2>
-          <p className="text-sm text-gray-500 font-medium">Piracicaba, SP • Próximos 30 dias</p>
+          <p className="text-sm text-gray-500 font-medium">{cityName}, {uf} • Próximos 30 dias</p>
         </div>
 
         {loading ? (
