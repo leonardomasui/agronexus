@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CloudRain, Sun, Wind, Droplets } from "lucide-react";
 import { DadosClimaticos } from "@agronexus/shared/types";
+import Link from "next/link";
 
 interface WeatherData {
   latitude: number;
@@ -19,12 +20,11 @@ export default function WeatherWidget() {
   useEffect(() => {
     async function fetchWeather() {
       try {
-        // Exemplo: Coordenadas de Brasília
+        // Coordenadas de Piracicaba, SP
         const url = process.env.NEXT_PUBLIC_API_URL 
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/clima/previsao?lat=-15.789&lon=-47.925&days=1`
-          : `http://127.0.0.1:3001/api/clima/previsao?lat=-15.789&lon=-47.925&days=1`;
+          ? `${process.env.NEXT_PUBLIC_API_URL}/api/clima/previsao?lat=-22.725&lon=-47.647&days=1`
+          : `http://127.0.0.1:3001/api/clima/previsao?lat=-22.725&lon=-47.647&days=1`;
         
-        console.log("Fetching weather from:", url);
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Erro ao buscar clima: ${res.statusText}`);
         const json = await res.json();
@@ -64,47 +64,49 @@ export default function WeatherWidget() {
   const precip = hoje.precipitacao_mm ?? 0;
 
   return (
-    <div className="bg-gradient-to-br from-agro-blue to-[#0459bd] rounded-2xl shadow-md p-4 text-white relative overflow-hidden">
-      {/* Decorative background element */}
-      <div className="absolute -right-10 -top-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+    <Link href="/clima" className="block transform transition-transform active:scale-[0.98]">
+      <div className="bg-gradient-to-br from-agro-blue to-[#0459bd] rounded-2xl shadow-md p-4 text-white relative overflow-hidden hover:shadow-lg transition-shadow">
+        {/* Decorative background element */}
+        <div className="absolute -right-10 -top-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
 
-      <div className="flex justify-between items-center relative z-10">
-        
-        {/* Esquerda: Info e Temp */}
-        <div className="flex flex-col">
-          <div className="mb-1">
-            <h3 className="font-medium text-white/90 text-sm">
-              {data.estacao_inmet?.nome ? `Estação ${data.estacao_inmet.nome}` : "Clima Local"}
-            </h3>
-          </div>
+        <div className="flex justify-between items-center relative z-10">
           
-          <div className="flex items-end gap-2 mt-1">
-            <span className="text-4xl font-bold tracking-tighter leading-none">{maxTemp}°</span>
-            <span className="text-sm text-white/70 mb-0.5">/{minTemp}°</span>
-          </div>
-        </div>
-
-        {/* Direita: Ícone e Infos Secundárias */}
-        <div className="flex flex-col items-end gap-2">
-          {precip > 0 ? (
-            <CloudRain className="text-blue-200" size={32} />
-          ) : (
-            <Sun className="text-yellow-300" size={32} />
-          )}
-          
-          <div className="flex gap-3 text-right">
-            <div className="flex items-center gap-1">
-              <CloudRain size={12} className="text-blue-200" />
-              <span className="text-xs font-medium">{precip}mm</span>
+          {/* Esquerda: Info e Temp */}
+          <div className="flex flex-col">
+            <div className="mb-1">
+              <h3 className="font-bold text-white text-sm uppercase tracking-wider">
+                Piracicaba - {new Date().toLocaleDateString('pt-BR')}
+              </h3>
             </div>
-            <div className="flex items-center gap-1">
-              <Wind size={12} className="text-blue-200" />
-              <span className="text-xs font-medium">{hoje.vento_kmh ? Math.round(hoje.vento_kmh) : "--"}km/h</span>
+            
+            <div className="flex items-end gap-2 mt-1">
+              <span className="text-4xl font-bold tracking-tighter leading-none">{maxTemp}°</span>
+              <span className="text-sm text-white/70 mb-0.5">/{minTemp}°</span>
             </div>
           </div>
+
+          {/* Direita: Ícone e Infos Secundárias */}
+          <div className="flex flex-col items-end gap-2">
+            {precip > 0 ? (
+              <CloudRain className="text-blue-200" size={32} />
+            ) : (
+              <Sun className="text-yellow-300" size={32} />
+            )}
+            
+            <div className="flex gap-3 text-right">
+              <div className="flex items-center gap-1">
+                <CloudRain size={12} className="text-blue-200" />
+                <span className="text-xs font-medium">{precip}mm</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Wind size={12} className="text-blue-200" />
+                <span className="text-xs font-medium">{hoje.vento_kmh ? Math.round(hoje.vento_kmh) : "--"}km/h</span>
+              </div>
+            </div>
+          </div>
+          
         </div>
-        
       </div>
-    </div>
+    </Link>
   );
 }

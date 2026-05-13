@@ -2,7 +2,7 @@
 
 import Header from "@/components/Header";
 import Modal from "@/components/Modal";
-import { Plus, Clock, BellRing, Loader2 } from "lucide-react";
+import { Plus, Clock, BellRing, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useEffect, FormEvent } from "react";
 
 interface AgendaItem {
@@ -19,13 +19,18 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tipoNovo, setTipoNovo] = useState<"evento" | "lembrete">("evento");
-
+  
   // Form states
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [tipoNovo, setTipoNovo] = useState<"evento" | "lembrete">("evento");
   const [titulo, setTitulo] = useState("");
   const [data, setData] = useState("");
   const [hora, setHora] = useState("");
   const [descricao, setDescricao] = useState("");
+
+  // Delete confirmation state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
 
@@ -47,11 +52,70 @@ export default function AgendaPage() {
     fetchEventos();
   }, []);
 
+  const openNewModal = () => {
+    setEditingId(null);
+    setTitulo("");
+    setData("");
+    setHora("");
+    setDescricao("");
+    setTipoNovo("evento");
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: AgendaItem) => {
+    setEditingId(item.id);
+    setTitulo(item.titulo);
+    setTipoNovo(item.tipo);
+    setDescricao(item.descricao || "");
+    
+    // Parse date and time
+    const eventDate = new Date(item.data_evento);
+    setData(eventDate.toISOString().split("T")[0]);
+    setHora(eventDate.toTimeString().substring(0, 5));
+    
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setItemToDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDeleteId) return;
+    
+    const id = itemToDeleteId;
+    setIsDeleteModalOpen(false);
+    
+    // Otimista: remove da tela na hora
+    const prevEventos = [...eventos];
+    setEventos(eventos.filter(e => e.id !== id));
+    
+    try {
+      const res = await fetch(`${apiUrl}/api/agenda/${id}`, {
+        method: "DELETE"
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erro no servidor ao excluir");
+      }
+      console.log("Sucesso: Item removido.");
+    } catch (err) {
+      console.error("Erro fatal na exclusão:", err);
+      alert("Erro ao excluir o compromisso.");
+      setEventos(prevEventos);
+    } finally {
+      setItemToDeleteId(null);
+    }
+  };
+
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    console.log("Salvando compromisso... Modo:", editingId ? "Edição" : "Criação");
 
-    // Combinar data + hora em um ISO string
     const dataEvento = data && hora
       ? new Date(`${data}T${hora}:00`).toISOString()
       : data
@@ -59,8 +123,11 @@ export default function AgendaPage() {
         : new Date().toISOString();
 
     try {
-      const res = await fetch(`${apiUrl}/api/agenda`, {
-        method: "POST",
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId ? `${apiUrl}/api/agenda/${editingId}` : `${apiUrl}/api/agenda`;
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           titulo,
@@ -72,17 +139,14 @@ export default function AgendaPage() {
 
       if (res.ok) {
         setIsModalOpen(false);
-        // Limpar form
-        setTitulo(""); setData(""); setHora(""); setDescricao("");
-        setTipoNovo("evento");
-        fetchEventos(); // recarrega a lista
+        fetchEventos();
       } else {
         const err = await res.json();
         alert(`Erro ao salvar: ${err.error || "tente novamente"}`);
       }
     } catch (err) {
-      console.error("Erro no POST agenda:", err);
-      alert("Não foi possível conectar à API. Verifique se ela está rodando.");
+      console.error("Erro no salvar agenda:", err);
+      alert("Não foi possível conectar à API.");
     } finally {
       setSaving(false);
     }
@@ -107,7 +171,7 @@ export default function AgendaPage() {
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={openNewModal}
             className="bg-agro-blue hover:bg-blue-800 text-white p-2 rounded-xl shadow-md transition-colors flex items-center justify-center"
           >
             <Plus size={24} />
@@ -127,9 +191,26 @@ export default function AgendaPage() {
             </div>
           ) : (
             eventos.map((item) => (
-              <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-agro-gray flex gap-4">
+              <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-agro-gray flex gap-4 relative group">
+                
+                {/* Actions (Edit/Delete) */}
+                <div className="absolute top-2 right-2 flex opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); openEditModal(item); }} 
+                    className="p-1.5 text-gray-400 hover:text-agro-blue bg-gray-50 hover:bg-blue-50 rounded-lg"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button 
+                    onClick={(e) => handleDeleteClick(e, item.id)} 
+                    className="p-1.5 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-lg"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
                 {/* Coluna da Data */}
-                <div className="flex flex-col items-center justify-center min-w-[60px] border-r border-gray-100 pr-4">
+                <div className="flex flex-col items-center justify-center min-w-[60px] border-r border-gray-100 pr-4 pt-2">
                   <span className="text-xs font-bold text-gray-400 uppercase">
                     {new Date(item.data_evento).toLocaleDateString("pt-BR", { month: "short" })}
                   </span>
@@ -139,11 +220,11 @@ export default function AgendaPage() {
                 </div>
 
                 {/* Conteúdo */}
-                <div className="flex-1">
+                <div className="flex-1 pt-2 pr-12">
                   <div className="flex justify-between items-start mb-1">
                     <h3 className="font-bold text-agro-black leading-tight pr-2">{item.titulo}</h3>
                     {item.tipo === "lembrete" && (
-                      <BellRing size={16} className="text-orange-500 shrink-0" />
+                      <BellRing size={16} className="text-orange-500 shrink-0 mt-0.5" />
                     )}
                   </div>
 
@@ -153,7 +234,7 @@ export default function AgendaPage() {
                     </p>
                   )}
 
-                  <div className="flex gap-3 text-xs font-medium text-gray-400">
+                  <div className="flex gap-3 text-xs font-medium text-gray-400 mt-2">
                     <div className="flex items-center gap-1">
                       <Clock size={12} />
                       <span>{getEventTimeText(item.data_evento)}</span>
@@ -177,10 +258,9 @@ export default function AgendaPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Novo Compromisso"
+        title={editingId ? "Editar Compromisso" : "Novo Compromisso"}
       >
         <form onSubmit={handleSave} className="space-y-4">
-          {/* Seletor Evento / Lembrete */}
           <div className="flex gap-2 p-1 bg-gray-100 rounded-xl mb-2">
             <button
               type="button"
@@ -258,6 +338,33 @@ export default function AgendaPage() {
             {saving ? <Loader2 className="animate-spin mr-2" size={20} /> : "Salvar na Agenda"}
           </button>
         </form>
+      </Modal>
+
+      {/* Modal de Confirmação de Exclusão Customizado */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Excluir Compromisso"
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-gray-600 text-sm">
+            Tem certeza que deseja remover este compromisso? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -3,9 +3,10 @@ import { Alerta } from "@agronexus/shared/types";
 
 interface AlertCardProps {
   alerta: Alerta;
+  onMarkAsRead?: (id: string) => void;
 }
 
-export default function AlertCard({ alerta }: AlertCardProps) {
+export default function AlertCard({ alerta, onMarkAsRead }: AlertCardProps) {
   // Determina as cores baseadas na severidade
   const getSeverityStyles = () => {
     switch (alerta.severidade) {
@@ -25,14 +26,30 @@ export default function AlertCard({ alerta }: AlertCardProps) {
           title: 'text-orange-900',
           badge: 'bg-orange-500 text-white'
         };
-      case 'info':
-      default:
+      case 'evento': // Verde Agro
+        return {
+          bg: 'bg-green-50',
+          border: 'border-green-200',
+          iconBg: 'bg-agro-green/10 text-agro-green',
+          title: 'text-green-900',
+          badge: 'bg-agro-green text-white'
+        };
+      case 'lembrete': // Azul Agro
         return {
           bg: 'bg-blue-50',
           border: 'border-blue-200',
-          iconBg: 'bg-blue-100 text-blue-600',
+          iconBg: 'bg-agro-blue/10 text-agro-blue',
           title: 'text-blue-900',
-          badge: 'bg-blue-500 text-white'
+          badge: 'bg-agro-blue text-white'
+        };
+      case 'info':
+      default:
+        return {
+          bg: 'bg-gray-50',
+          border: 'border-gray-200',
+          iconBg: 'bg-gray-100 text-gray-600',
+          title: 'text-gray-900',
+          badge: 'bg-gray-500 text-white'
         };
     }
   };
@@ -54,7 +71,7 @@ export default function AlertCard({ alerta }: AlertCardProps) {
   });
 
   return (
-    <div className={`${styles.bg} ${styles.border} border rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all opacity-${alerta.lido ? '75' : '100'}`}>
+    <div className={`${styles.bg} ${styles.border} border rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all ${alerta.lido ? 'opacity-60' : 'opacity-100'}`}>
       
       {/* Indicador de Novo */}
       {!alerta.lido && (
@@ -88,8 +105,11 @@ export default function AlertCard({ alerta }: AlertCardProps) {
               Fonte: {alerta.fonte} • {dataFormatada}
             </span>
             
-            <button className={`text-xs font-bold ${styles.title} hover:underline`}>
-              {alerta.lido ? "Detalhes" : "Marcar como Lido"}
+            <button 
+              onClick={() => onMarkAsRead && onMarkAsRead(alerta.id)}
+              className={`text-xs font-bold ${styles.title} hover:underline`}
+            >
+              {alerta.lido ? "Marcar como não lido" : "Marcar como Lido"}
             </button>
           </div>
         </div>

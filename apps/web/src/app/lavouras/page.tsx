@@ -12,12 +12,41 @@ export default function LavourasPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Undo deletion states
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [undoTimeout, setUndoTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Form states
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [variedade, setVariedade] = useState("");
   const [area, setArea] = useState("");
   const [dataPlantio, setDataPlantio] = useState("");
+  const [dataColheitaPrev, setDataColheitaPrev] = useState("");
+  const [status, setStatus] = useState<string>("plantado");
+
+  const CICLOS_MESES: Record<string, number> = {
+    "soja": 4,
+    "milho": 5,
+    "trigo": 5,
+    "feijão": 3,
+    "café": 12,
+    "cana": 12,
+    "algodão": 6
+  };
+
+  useEffect(() => {
+    if (nome && dataPlantio) {
+      const nomeLimpo = nome.toLowerCase().trim();
+      const meses = CICLOS_MESES[nomeLimpo] || 4;
+      
+      const dataBase = new Date(dataPlantio);
+      dataBase.setMonth(dataBase.getMonth() + meses);
+      
+      setDataColheitaPrev(dataBase.toISOString().split('T')[0]);
+    }
+  }, [nome, dataPlantio]);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
 
@@ -39,31 +68,81 @@ export default function LavourasPage() {
     fetchCulturas();
   }, []);
 
+  const openNewModal = () => {
+    setEditingId(null);
+    setNome(""); setVariedade(""); setArea(""); setDataPlantio(""); setDataColheitaPrev(""); setStatus("plantado");
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: Cultura) => {
+    setEditingId(item.id);
+    setNome(item.nome);
+    setVariedade(item.variedade || "");
+    setArea(item.area_ha.toString());
+    setDataPlantio(item.data_plantio ? new Date(item.data_plantio).toISOString().split('T')[0] : "");
+    setDataColheitaPrev(item.data_colheita_prev ? new Date(item.data_colheita_prev).toISOString().split('T')[0] : "");
+    setStatus(item.status);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    // Inicia processo de exclusão com delay de 2s
+    setDeletingId(id);
+    
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/culturas/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          setCulturas(prev => prev.filter(c => c.id !== id));
+        }
+      } catch (err) {
+        console.error("Erro ao excluir:", err);
+      } finally {
+        setDeletingId(null);
+        setUndoTimeout(null);
+      }
+    }, 2000);
+
+    setUndoTimeout(timeout);
+  };
+
+  const handleUndo = () => {
+    if (undoTimeout) {
+      clearTimeout(undoTimeout);
+      setUndoTimeout(null);
+      setDeletingId(null);
+    }
+  };
+
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const res = await fetch(`${apiUrl}/api/culturas`, {
-        method: 'POST',
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `${apiUrl}/api/culturas/${editingId}` : `${apiUrl}/api/culturas`;
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome,
           variedade,
           area_ha: Number(area),
           data_plantio: dataPlantio || null,
+          data_colheita_prev: dataColheitaPrev || null,
+          status
         }),
       });
 
       if (res.ok) {
         setIsModalOpen(false);
-        setNome(""); setVariedade(""); setArea(""); setDataPlantio("");
-        fetchCulturas(); // recarrega a lista
+        fetchCulturas(); 
       } else {
         alert("Erro ao salvar lavoura");
       }
     } catch (err) {
-      console.error("Erro no POST:", err);
+      console.error("Erro no salvar cultura:", err);
     } finally {
       setSaving(false);
     }
@@ -77,7 +156,7 @@ export default function LavourasPage() {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-agro-black">Minhas Lavouras</h2>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={openNewModal}
             className="bg-agro-blue hover:bg-blue-800 text-white p-2 rounded-xl shadow-md transition-colors flex items-center justify-center"
           >
             <Plus size={24} />
@@ -95,11 +174,31 @@ export default function LavourasPage() {
               Nenhuma lavoura cadastrada. Clique no botão + para adicionar.
             </div>
           ) : (
-            culturas.map((cultura) => (
-              <CropCard key={cultura.id} cultura={cultura} />
-            ))
+            culturas
+              .filter(c => c.id !== deletingId)
+              .map((cultura) => (
+                <CropCard key={cultura.id} cultura={cultura} onEdit={openEditModal} onDelete={handleDelete} />
+              ))
           )}
         </div>
+
+        {/* Floating Undo Notification */}
+        {deletingId && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-md z-50 px-6 animate-bounce-in">
+            <div className="bg-agro-black text-white px-5 py-4 rounded-2xl shadow-2xl flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">Lavoura removida</span>
+              </div>
+              <button 
+                onClick={handleUndo}
+                className="text-agro-blue font-bold text-sm uppercase tracking-wider hover:text-blue-300 transition-colors"
+              >
+                Desfazer
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Spacer for bottom nav */}
         <div className="h-20"></div>
@@ -108,7 +207,7 @@ export default function LavourasPage() {
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title="Nova Lavoura"
+        title={editingId ? "Editar Lavoura" : "Nova Lavoura"}
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
@@ -129,13 +228,38 @@ export default function LavourasPage() {
               <input value={dataPlantio} onChange={e => setDataPlantio(e.target.value)} type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-agro-blue" />
             </div>
           </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Status do Desenvolvimento</label>
+            <select 
+              value={status} 
+              onChange={e => setStatus(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-agro-blue appearance-none"
+            >
+              <option value="plantado">Recém Plantado</option>
+              <option value="crescimento">Em Crescimento</option>
+              <option value="colheita">Pronto para Colheita</option>
+              <option value="colhido">Colhido</option>
+              <option value="perdido">Perdido</option>
+            </select>
+          </div>
+
+          {dataColheitaPrev && (
+            <div className="bg-agro-blue/5 p-4 rounded-xl border border-agro-blue/10">
+              <p className="text-xs font-bold text-agro-blue uppercase mb-1">Estimativa Inteligente</p>
+              <p className="text-sm text-gray-700">
+                Data prevista para colheita: <span className="font-bold">{new Date(dataColheitaPrev).toLocaleDateString('pt-BR')}</span>
+              </p>
+              <p className="text-[10px] text-gray-400 mt-1 italic">*Baseado no ciclo médio para {nome}.</p>
+            </div>
+          )}
           
           <button 
             type="submit" 
             disabled={saving}
             className="w-full bg-agro-blue text-white font-bold rounded-xl py-3 mt-4 hover:bg-blue-800 transition-colors shadow-md disabled:bg-gray-400 flex justify-center items-center"
           >
-            {saving ? <Loader2 className="animate-spin mr-2" size={20} /> : "Salvar Lavoura"}
+            {saving ? <Loader2 className="animate-spin mr-2" size={20} /> : (editingId ? "Atualizar Lavoura" : "Salvar Lavoura")}
           </button>
         </form>
       </Modal>

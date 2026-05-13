@@ -22,7 +22,7 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/culturas
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { nome, variedade, area_ha, data_plantio, status } = req.body;
+    const { nome, variedade, area_ha, data_plantio, data_colheita_prev, status } = req.body;
     
     // Como ainda não temos login, usaremos uma propriedade de desenvolvimento
     // Busca a primeira propriedade cadastrada no banco para associar (ou cria uma se não existir)
@@ -50,6 +50,7 @@ router.post('/', async (req: Request, res: Response) => {
         variedade,
         area_ha,
         data_plantio,
+        data_colheita_prev,
         status: status || 'crescimento'
       })
       .select()
@@ -59,6 +60,53 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(201).json(data);
   } catch (err: any) {
     console.error('Erro POST /culturas:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/culturas/:id
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { nome, variedade, area_ha, data_plantio, data_colheita_prev, status } = req.body;
+
+    const { data, error } = await supabase
+      .from('culturas')
+      .update({
+        nome,
+        variedade,
+        area_ha,
+        data_plantio,
+        data_colheita_prev,
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json(data);
+  } catch (err: any) {
+    console.error('Erro PUT /culturas:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/culturas/:id
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('culturas')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return res.status(204).send();
+  } catch (err: any) {
+    console.error('Erro DELETE /culturas:', err);
     return res.status(500).json({ error: err.message });
   }
 });

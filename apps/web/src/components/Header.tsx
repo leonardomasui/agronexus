@@ -1,5 +1,6 @@
 import { BellRing, User, Tractor, Leaf, PawPrint, Sprout } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Header() {
   // Ícones para o padrão de fundo
@@ -40,10 +41,13 @@ export default function Header() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="relative p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+          <Link 
+            href="/avisos"
+            className="relative p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
             <BellRing size={20} />
             <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-agro-blue"></span>
-          </button>
+          </Link>
           <button className="p-2 rounded-full bg-agro-green/80 border border-white/20 shadow-sm">
             <User size={20} />
           </button>

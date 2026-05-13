@@ -3,48 +3,161 @@
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import AlertCard from "@/components/AlertCard";
-import { Filter, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Alerta } from "@agronexus/shared/types";
 import { parseInmetXML } from "@/lib/inmetParser";
-import { getSystemAlerts } from "@/lib/mockData";
 
 export default function AvisosPage() {
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filtroAtivo, setFiltroAtivo] = useState<"todos" | "clima" | "lembretes" | "eventos">("todos");
 
   useEffect(() => {
-    async function fetchAlertasINMET() {
+    async function fetchData() {
+      setLoading(true);
       try {
-        const url = process.env.NEXT_PUBLIC_API_URL 
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/clima/alertas`
-          : `http://127.0.0.1:3001/api/clima/alertas`;
-          
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Falha ao buscar RSS da INMET");
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+        const agora = new Date();
         
-        const xmlString = await res.text();
-        const inmetAlertas = parseInmetXML(xmlString);
-        
-        // Obter Alertas do Sistema + Lembretes da Agenda
-        const SYSTEM_ALERTAS = getSystemAlerts();
-        
-        // Mesclar INMET reais com os alertas do sistema e agenda
-        const todosAlertas = [...inmetAlertas, ...SYSTEM_ALERTAS].sort((a, b) => {
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        // Define quantos dias de clima buscar baseado no filtro
+        const diasClima = filtroAtivo === "clima" ? 30 : 7;
+
+        // 1. Buscar Alertas Oficiais do INMET
+        let inmetAlertas: Alerta[] = [];
+        if (filtroAtivo === "todos" || filtroAtivo === "clima") {
+          try {
+            const res = await fetch(`${baseUrl}/api/clima/alertas`);
+            if (res.ok) {
+              const xmlString = await res.text();
+              const todosInmet = parseInmetXML(xmlString);
+              inmetAlertas = todosInmet.filter(a => new Date(a.created_at) >= agora);
+            }
+          } catch (e) { console.error("Erro INMET", e); }
+        }
+
+        // 2. Buscar Agenda (Eventos + Lembretes)
+        let agendaAlertas: Alerta[] = [];
+        if (filtroAtivo === "todos" || filtroAtivo === "lembretes" || filtroAtivo === "eventos") {
+          try {
+            const agendaRes = await fetch(`${baseUrl}/api/agenda`);
+            if (agendaRes.ok) {
+              const agendaData = await agendaRes.json();
+              agendaAlertas = agendaData
+                .filter((item: any) => {
+                  const itemDate = new Date(item.data_evento);
+                  if (itemDate < agora) return false;
+                  
+                  if (filtroAtivo === "lembretes") return item.tipo === "lembrete";
+                  if (filtroAtivo === "eventos") return item.tipo === "evento";
+                  return true;
+                })
+                .map((item: any) => ({
+                  id: item.id,
+                  propriedade_id: item.propriedade_id || "1",
+                  tipo: 'geral',
+                  mensagem: `${item.titulo}`,
+                  severidade: item.tipo === 'lembrete' ? 'lembrete' : 'evento',
+                  fonte: item.tipo === 'lembrete' ? 'Lembrete' : 'Evento da Agenda',
+                  lido: item.concluido || false,
+                  created_at: item.data_evento
+                }));
+            }
+          } catch (e) { console.error("Erro Agenda", e); }
+        }
+
+        // 3. Buscar Previsão de Clima
+        let previsaoAlertas: Alerta[] = [];
+        if (filtroAtivo === "todos" || filtroAtivo === "clima") {
+          try {
+            const climaRes = await fetch(`${baseUrl}/api/clima/previsao?lat=-22.725&lon=-47.647&days=${diasClima}`);
+            if (climaRes.ok) {
+              const climaData = await climaRes.json();
+              if (climaData.dados && climaData.dados.length > 0) {
+                climaData.dados.forEach((dia: any, index: number) => {
+                  const diaDate = new Date(dia.data);
+                  const hoje_comeco = new Date();
+                  hoje_comeco.setHours(0,0,0,0);
+                  if (diaDate < hoje_comeco) return;
+
+                  // Alerta de Chuva
+                  if (dia.precipitacao_mm && dia.precipitacao_mm >= 15) {
+                    previsaoAlertas.push({
+                      id: `chuva-${dia.data}`,
+                      propriedade_id: "1",
+                      tipo: 'clima',
+                      mensagem: `Previsão de chuva forte (${dia.precipitacao_mm}mm) para ${diaDate.toLocaleDateString('pt-BR')}`,
+                      severidade: dia.precipitacao_mm >= 30 ? 'critico' : 'aviso',
+                      fonte: 'Previsão do Tempo',
+                      lido: false,
+                      created_at: new Date(dia.data).toISOString()
+                    });
+                  }
+
+                  // Alerta de Temperatura Brusca
+                  if (index > 0) {
+                    const diaAnterior = climaData.dados[index - 1];
+                    const diff = Math.abs(dia.temp_max_c - diaAnterior.temp_max_c);
+                    if (diff >= 7) {
+                      previsaoAlertas.push({
+                        id: `temp-${dia.data}`,
+                        propriedade_id: "1",
+                        tipo: 'clima',
+                        mensagem: `Mudança brusca de temperatura (${dia.temp_max_c > diaAnterior.temp_max_c ? 'Aumento' : 'Queda'} de ${Math.round(diff)}°C) em ${diaDate.toLocaleDateString('pt-BR')}`,
+                        severidade: 'aviso',
+                        fonte: 'Previsão do Tempo',
+                        lido: false,
+                        created_at: new Date(dia.data).toISOString()
+                      });
+                    }
+                  }
+
+                  // Alerta de Temperatura Extrema
+                  if (dia.temp_max_c >= 35 || dia.temp_min_c <= 10) {
+                    previsaoAlertas.push({
+                        id: `extrema-${dia.data}`,
+                        propriedade_id: "1",
+                        tipo: 'clima',
+                        mensagem: `Temperatura Extrema em ${diaDate.toLocaleDateString('pt-BR')}: ${Math.round(dia.temp_min_c)}°C - ${Math.round(dia.temp_max_c)}°C`,
+                        severidade: 'critico',
+                        fonte: 'Previsão do Tempo',
+                        lido: false,
+                        created_at: new Date(dia.data).toISOString()
+                      });
+                  }
+                });
+              }
+            }
+          } catch (e) { console.error("Erro Previsão Chuva", e); }
+        }
+
+        // Mesclar tudo e ordenar
+        const todosAlertas = [...inmetAlertas, ...agendaAlertas, ...previsaoAlertas].sort((a, b) => {
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         });
         
         setAlertas(todosAlertas);
       } catch (err) {
         console.error(err);
-        // Em caso de erro, exibe pelo menos os do sistema
-        setAlertas(SYSTEM_ALERTAS);
       } finally {
         setLoading(false);
       }
     }
     
-    fetchAlertasINMET();
-  }, []);
+    fetchData();
+  }, [filtroAtivo]);
+
+  const handleMarkAsRead = async (id: string) => {
+    setAlertas(prev => prev.map(a => a.id === id ? { ...a, lido: !a.lido } : a));
+    const alerta = alertas.find(a => a.id === id);
+    if (alerta && (alerta.fonte === 'Lembrete' || alerta.fonte === 'Evento da Agenda')) {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+        await fetch(`${baseUrl}/api/agenda/${id}/toggle-concluido`, { method: 'PATCH' });
+      } catch (e) {
+        console.error("Erro ao persistir lido na agenda", e);
+      }
+    }
+  };
 
   const criticosCount = alertas.filter(a => a.severidade === 'critico' && !a.lido).length;
 
@@ -53,26 +166,52 @@ export default function AvisosPage() {
       <Header />
       
       <div className="px-6 py-6 space-y-6">
-        <div className="flex justify-between items-end">
-          <div>
-            <h2 className="text-xl font-bold text-agro-black">Central de Avisos</h2>
-            {!loading && criticosCount > 0 && (
-              <p className="text-xs font-semibold text-red-600 mt-1">
-                {criticosCount} aviso(s) crítico(s) não lido(s)
-              </p>
-            )}
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-end">
+            <div>
+              <h2 className="text-xl font-bold text-agro-black">Central de Avisos</h2>
+              {!loading && criticosCount > 0 && (
+                <p className="text-xs font-semibold text-red-600 mt-1">
+                  {criticosCount} aviso(s) crítico(s) não lido(s)
+                </p>
+              )}
+            </div>
           </div>
           
-          <button className="bg-white border border-agro-gray text-agro-black p-2 rounded-xl shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center">
-            <Filter size={20} />
-          </button>
+          {/* Filtros Chips */}
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+             <button 
+              onClick={() => setFiltroAtivo("todos")}
+              className={`text-[10px] font-bold px-4 py-2 rounded-xl border transition-all shrink-0 ${filtroAtivo === 'todos' ? 'bg-agro-blue text-white border-agro-blue shadow-md' : 'bg-white text-gray-500 border-agro-gray'}`}
+            >
+              TODOS
+            </button>
+            <button 
+              onClick={() => setFiltroAtivo("clima")}
+              className={`text-[10px] font-bold px-4 py-2 rounded-xl border transition-all shrink-0 ${filtroAtivo === 'clima' ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'bg-white text-gray-500 border-agro-gray'}`}
+            >
+              CLIMA
+            </button>
+            <button 
+              onClick={() => setFiltroAtivo("lembretes")}
+              className={`text-[10px] font-bold px-4 py-2 rounded-xl border transition-all shrink-0 ${filtroAtivo === 'lembretes' ? 'bg-agro-blue text-white border-agro-blue shadow-md' : 'bg-white text-gray-500 border-agro-gray'}`}
+            >
+              LEMBRETES
+            </button>
+            <button 
+              onClick={() => setFiltroAtivo("eventos")}
+              className={`text-[10px] font-bold px-4 py-2 rounded-xl border transition-all shrink-0 ${filtroAtivo === 'eventos' ? 'bg-agro-green text-white border-agro-green shadow-md' : 'bg-white text-gray-500 border-agro-gray'}`}
+            >
+              EVENTOS
+            </button>
+          </div>
         </div>
 
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-10 text-agro-blue">
             <Loader2 className="animate-spin mb-2" size={32} />
-            <p className="text-sm font-medium">Buscando alertas do INMET...</p>
+            <p className="text-sm font-medium">Buscando alertas {filtroAtivo === 'clima' ? 'do mês...' : '...'}</p>
           </div>
         )}
 
@@ -80,7 +219,11 @@ export default function AvisosPage() {
         {!loading && (
           <div className="space-y-4">
             {alertas.map((alerta) => (
-              <AlertCard key={alerta.id} alerta={alerta} />
+              <AlertCard 
+                key={alerta.id} 
+                alerta={alerta} 
+                onMarkAsRead={handleMarkAsRead} 
+              />
             ))}
           </div>
         )}
@@ -88,7 +231,7 @@ export default function AvisosPage() {
         {/* Mensagem de Vazio */}
         {!loading && alertas.length === 0 && (
           <div className="bg-white rounded-2xl p-8 text-center border border-agro-gray border-dashed">
-            <p className="text-gray-500 font-medium text-sm">Nenhum aviso ativo no momento.</p>
+            <p className="text-gray-500 font-medium text-sm">Nenhum aviso para "{filtroAtivo.toUpperCase()}".</p>
             <p className="text-gray-400 text-xs mt-1">Sua propriedade está segura.</p>
           </div>
         )}

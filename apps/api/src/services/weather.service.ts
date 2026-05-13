@@ -6,6 +6,8 @@ const ARCHIVE_URL = 'https://archive-api.open-meteo.com/v1/archive';
 export interface DadosClimaticos {
   data: string;
   precipitacao_mm: number | null;
+  prob_chuva_pct: number | null;
+  uv_index: number | null;
   temp_min_c: number | null;
   temp_max_c: number | null;
   radiacao_solar_wm2: number | null;
@@ -48,6 +50,8 @@ export async function getPrevisao(
         'temperature_2m_max',
         'temperature_2m_min',
         'precipitation_sum',
+        'precipitation_probability_max',
+        'uv_index_max',
         'et0_fao_evapotranspiration',
         'windspeed_10m_max',
         'shortwave_radiation_sum',
@@ -64,6 +68,8 @@ export async function getPrevisao(
     dados: data.daily.time.map((date: string, i: number) => ({
       data: date,
       precipitacao_mm: data.daily.precipitation_sum[i],
+      prob_chuva_pct: data.daily.precipitation_probability_max ? data.daily.precipitation_probability_max[i] : null,
+      uv_index: data.daily.uv_index_max ? data.daily.uv_index_max[i] : null,
       temp_min_c: data.daily.temperature_2m_min[i],
       temp_max_c: data.daily.temperature_2m_max[i],
       radiacao_solar_wm2: data.daily.shortwave_radiation_sum[i],
@@ -113,6 +119,8 @@ export async function getHistorico(
     dados: data.daily.time.map((date: string, i: number) => ({
       data: date,
       precipitacao_mm: data.daily.precipitation_sum[i],
+      prob_chuva_pct: null,
+      uv_index: null,
       temp_min_c: data.daily.temperature_2m_min[i],
       temp_max_c: data.daily.temperature_2m_max[i],
       radiacao_solar_wm2: data.daily.shortwave_radiation_sum[i],
