@@ -1,6 +1,6 @@
-# 📁 AgroNexus — Documento de Transição de Contexto
+# 📁 AgroNexus — Documento de Transição de Contexto (Atualizado)
 
-Este documento foi criado para que você possa continuar este projeto em outra máquina sem perder o histórico do que já construímos.
+Este documento garante que você possa continuar o desenvolvimento do **AgroNexus** em outra máquina com total clareza do progresso atual.
 
 ---
 
@@ -9,35 +9,56 @@ Este documento foi criado para que você possa continuar este projeto em outra m
 - **Frontend**: Next.js 14, TailwindCSS, Lucide Icons
 - **Backend**: Express.js (TypeScript)
 - **Banco de Dados**: Supabase (PostgreSQL)
-- **Integrações**: INMET (Alertas via RSS) e IBGE (Municípios)
+- **Integrações**: INMET (Alertas via RSS), Open-Meteo (Previsão 30 dias) e IBGE (Municípios)
 
 ---
 
-## ✅ Funcionalidades Prontas
-1. **Dashboard (Início)**: Widget de clima compacto, Resumo de Lavouras e Pecuária, Feed de Alertas e Lembretes.
-2. **Módulo de Lavouras**: Listagem de culturas com barras de progresso e formulário de adição (Modal).
-3. **Módulo de Pecuária**: Cartões de rebanho com Checklist de rotina interativo e formulário de adição.
-4. **Agenda Inteligente**: Sistema de Eventos e Lembretes. Lembretes da agenda são replicados automaticamente na tela de Avisos e no Dashboard.
-5. **API Integrada**: Rotas de GET e POST já funcionais para Lavouras, Animais e Agenda, conectadas ao Supabase.
+## ✅ Funcionalidades Finalizadas nesta Sessão
+1. **Navegação Inteligente**: 
+   - O ícone de **Sino** no cabeçalho agora abre a **Central de Avisos**.
+   - A aba inferior "Avisos" foi substituída por **Clima** (Previsão Mensal).
+2. **Central de Avisos (Notificações)**:
+   - Filtros por: Todos, Clima, Lembretes e Eventos.
+   - Opção de **Marcar como Lido / Não Lido** com persistência no banco para Agenda.
+   - Cores específicas: Verde (Eventos), Azul (Lembretes), Vermelho/Laranja (Alertas).
+3. **Previsão Climática Avançada**:
+   - Página de 30 dias com Temperatura (Mín/Máx), **Probabilidade de Chuva (%)**, **Índice UV** (com cores de risco) e **Incidência Solar (kWh/m²)**.
+   - Card de clima na Home agora é clicável e leva para esta página.
+4. **CRUD de Lavouras com UX Premium**:
+   - Edição de culturas e cálculo automático de colheita.
+   - **Exclusão com "Undo" (Desfazer)**: O card some na hora, mas você tem 2 segundos para desfazer antes da deleção real.
 
 ---
 
 ## 🚀 Prompt para colar no Antigravity na Máquina Nova:
 
-> "Olá, Antigravity! Estou continuando o projeto **AgroNexus** nesta máquina. O código já foi clonado do GitHub (https://github.com/leonardomasui/agronexus). 
+> "Olá, Antigravity! Estou continuando o projeto **AgroNexus** nesta máquina. O código está no GitHub: https://github.com/leonardomasui/agronexus.
 > 
-> **Contexto Atual:** Já finalizamos toda a interface mobile-first e a navegação (BottomNav com 5 abas). Os formulários de adição para Lavouras, Animais e Agenda já estão enviando dados via `fetch` para a API Express (porta 3001). 
+> **Resumo do Estado Atual:** 
+> - O monorepo está configurado e a API (porta 3001) já conversa com o Supabase.
+> - Finalizamos a Central de Avisos (acessada pelo Sino) e a página de Clima Mensal (30 dias).
+> - Implementamos o CRUD completo de Lavouras com sistema de 'Undo' na exclusão.
+> - O Dashboard está sincronizado e reflete os hectares totais e animais cadastrados.
 > 
-> **O que precisamos fazer agora:** 
-> 1. Garantir que as variáveis de ambiente (.env) do Supabase estejam configuradas.
-> 2. Finalizar a integração das rotas de 'Lembretes' e 'Rotinas' no banco de dados.
-> 3. Implementar a lógica de 'Concluir Tarefa' no checklist dos animais para salvar no banco.
+> **Próximos Passos Sugeridos:**
+> 1. Validar as variáveis de ambiente (`.env` na API e `.env.local` na Web).
+> 2. Implementar a finalização de ciclos de colheita (mover cultura para histórico).
+> 3. Implementar a aba 'Pecuária' com persistência completa das rotinas no banco.
 > 
-> Por favor, analise a estrutura das pastas `apps/web` e `apps/api` e me diga qual o primeiro passo para testarmos a persistência real dos dados."
+> Analise a estrutura atual e vamos continuar de onde paramos!"
 
 ---
 
-## 🔑 Lembrete de Arquivos Ocultos
-Ao clonar o projeto, você precisará criar manualmente o arquivo:
-- `apps/api/.env` (Com as chaves do Supabase)
-- `apps/web/.env.local` (Com `NEXT_PUBLIC_API_URL=http://127.0.0.1:3001`)
+## 🔑 Configuração de Ambiente (Obrigatório)
+Ao clonar, certifique-se de configurar:
+1. `apps/api/.env`:
+   ```
+   SUPABASE_URL=seu_url
+   SUPABASE_KEY=sua_chave
+   PORT=3001
+   ```
+2. `apps/web/.env.local`:
+   ```
+   NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
+   ```
+3. Rodar `npm install` na raiz para instalar todas as dependências do monorepo.
