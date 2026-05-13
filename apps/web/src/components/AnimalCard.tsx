@@ -6,7 +6,7 @@ import { useState } from "react";
 
 // Estendendo o tipo apenas para uso visual no Mock
 export interface AnimalComRotina extends Animal {
-  rotinas?: { id: string; tarefa: string; concluida: boolean }[];
+  rotinas?: { id: string; tarefa: string; concluido: boolean }[];
 }
 
 interface AnimalCardProps {
@@ -19,28 +19,72 @@ export default function AnimalCard({ animal }: AnimalCardProps) {
   const [rotinas, setRotinas] = useState(animal.rotinas || []);
   const [novaTarefa, setNovaTarefa] = useState("");
 
-  const toggleRotina = (id: string) => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+
+  const toggleRotina = async (id: string) => {
     if (modoEdicao) return; // Não marca concluído no modo edição
-    setRotinas(prev => prev.map(r => r.id === id ? { ...r, concluida: !r.concluida } : r));
+    
+    // Otimista: atualiza UI primeiro
+    const rotinaAlvo = rotinas.find(r => r.id === id);
+    if (!rotinaAlvo) return;
+    
+    const novoStatus = !rotinaAlvo.concluido;
+    setRotinas(prev => prev.map(r => r.id === id ? { ...r, concluido: novoStatus } : r));
+
+    try {
+      await fetch(`${apiUrl}/api/animais/rotinas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concluido: novoStatus })
+      });
+    } catch (err) {
+      console.error("Erro ao atualizar rotina:", err);
+      // Reverte se der erro
+      setRotinas(prev => prev.map(r => r.id === id ? { ...r, concluido: !novoStatus } : r));
+    }
   };
 
-  const deletarRotina = (e: React.MouseEvent, id: string) => {
+  const deletarRotina = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    
+    // Otimista
+    const prevRotinas = [...rotinas];
     setRotinas(prev => prev.filter(r => r.id !== id));
+
+    try {
+      await fetch(`${apiUrl}/api/animais/rotinas/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error("Erro ao deletar rotina:", err);
+      setRotinas(prevRotinas);
+    }
   };
 
-  const adicionarRotina = (e: React.FormEvent) => {
+  const adicionarRotina = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!novaTarefa.trim()) return;
     
-    setRotinas([
-      ...rotinas, 
-      { id: `r-new-${Date.now()}`, tarefa: novaTarefa.trim(), concluida: false }
-    ]);
-    setNovaTarefa("");
+    const tarefaTexto = novaTarefa.trim();
+    setNovaTarefa(""); // Limpa form
+    
+    try {
+      const res = await fetch(`${apiUrl}/api/animais/rotinas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ animal_id: animal.id, tarefa: tarefaTexto })
+      });
+      
+      if (res.ok) {
+        const novaRotina = await res.json();
+        setRotinas(prev => [...prev, novaRotina]);
+      }
+    } catch (err) {
+      console.error("Erro ao adicionar rotina:", err);
+    }
   };
 
-  const concluidas = rotinas.filter(r => r.concluida).length;
+  const concluidas = rotinas.filter(r => r.concluido).length;
   const totalRotinas = rotinas.length;
   const progresso = totalRotinas > 0 ? Math.round((concluidas / totalRotinas) * 100) : 0;
 
@@ -151,11 +195,11 @@ export default function AnimalCard({ animal }: AnimalCardProps) {
               <div 
                 key={rotina.id}
                 onClick={() => toggleRotina(rotina.id)}
-                className={`flex items-center justify-between p-2 rounded-lg transition-colors ${modoEdicao ? 'bg-white border border-gray-200' : (rotina.concluida ? 'bg-green-50/50 cursor-pointer' : 'hover:bg-gray-100 cursor-pointer')}`}
+                className={`flex items-center justify-between p-2 rounded-lg transition-colors ${modoEdicao ? 'bg-white border border-gray-200' : (rotina.concluido ? 'bg-green-50/50 cursor-pointer' : 'hover:bg-gray-100 cursor-pointer')}`}
               >
                 <div className="flex items-center gap-3">
                   {!modoEdicao && (
-                    rotina.concluida ? (
+                    rotina.concluido ? (
                       <CheckCircle2 size={20} className="text-agro-green shrink-0" />
                     ) : (
                       <Circle size={20} className="text-gray-300 shrink-0" />
@@ -163,7 +207,7 @@ export default function AnimalCard({ animal }: AnimalCardProps) {
                   )}
                   {modoEdicao && <Circle size={16} className="text-gray-300 shrink-0" />}
                   
-                  <span className={`text-sm font-medium transition-all ${!modoEdicao && rotina.concluida ? 'text-gray-400 line-through' : 'text-agro-black'}`}>
+                  <span className={`text-sm font-medium transition-all ${!modoEdicao && rotina.concluido ? 'text-gray-400 line-through' : 'text-agro-black'}`}>
                     {rotina.tarefa}
                   </span>
                 </div>
