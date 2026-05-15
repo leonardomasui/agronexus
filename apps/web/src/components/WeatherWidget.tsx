@@ -1,20 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloudRain, Sun, Wind, Droplets } from "lucide-react";
-import { DadosClimaticos } from "@agronexus/shared/types";
+import { CloudRain, Sun, Wind } from "lucide-react";
+import { PrevisaoResponse } from "@agronexus/shared/types";
 import Link from "next/link";
 
-interface WeatherData {
-  latitude: number;
-  longitude: number;
-  timezone: string;
-  dados: DadosClimaticos[];
-  estacao_inmet?: { codigo: string; nome: string; uf: string };
-}
-
 export default function WeatherWidget() {
-  const [data, setData] = useState<WeatherData | null>(null);
+  const [data, setData] = useState<PrevisaoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [cityName, setCityName] = useState("Piracicaba");
 
@@ -51,6 +43,9 @@ export default function WeatherWidget() {
       }
     }
     fetchWeather();
+
+    window.addEventListener("agronexus_settings_updated", fetchWeather);
+    return () => window.removeEventListener("agronexus_settings_updated", fetchWeather);
   }, []);
 
   if (loading) {
@@ -73,7 +68,10 @@ export default function WeatherWidget() {
     );
   }
 
-  const hoje = data.dados[0];
+  const hojeDate = new Date();
+  const hojeStr = `${hojeDate.getFullYear()}-${String(hojeDate.getMonth() + 1).padStart(2, '0')}-${String(hojeDate.getDate()).padStart(2, '0')}`;
+  const hoje = data.dados.find(d => d.data === hojeStr) || data.dados[0];
+  const currentTemp = data.current_weather ? Math.round(data.current_weather.temp) : (hoje.temp_max_c ? Math.round(hoje.temp_max_c) : "--");
   const maxTemp = hoje.temp_max_c ? Math.round(hoje.temp_max_c) : "--";
   const minTemp = hoje.temp_min_c ? Math.round(hoje.temp_min_c) : "--";
   const precip = hoje.precipitacao_mm ?? 0;
@@ -89,14 +87,17 @@ export default function WeatherWidget() {
           {/* Esquerda: Info e Temp */}
           <div className="flex flex-col">
             <div className="mb-1">
-              <h3 className="font-bold text-white text-sm uppercase tracking-wider">
-                {cityName} - {new Date().toLocaleDateString('pt-BR')}
+              <h3 className="font-bold text-white text-[10px] uppercase tracking-wider opacity-80">
+                {cityName} • Agora
               </h3>
             </div>
             
             <div className="flex items-end gap-2 mt-1">
-              <span className="text-4xl font-bold tracking-tighter leading-none">{maxTemp}°</span>
-              <span className="text-sm text-white/70 mb-0.5">/{minTemp}°</span>
+              <span className="text-4xl font-bold tracking-tighter leading-none">{currentTemp}°</span>
+              <div className="flex flex-col text-[10px] font-bold opacity-70 mb-0.5">
+                <span>↑{maxTemp}°</span>
+                <span>↓{minTemp}°</span>
+              </div>
             </div>
           </div>
 

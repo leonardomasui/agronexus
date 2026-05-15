@@ -30,10 +30,18 @@ export default function AvisosPage() {
             if (res.ok) {
               const xmlString = await res.text();
               const todosInmet = parseInmetXML(xmlString);
-              inmetAlertas = todosInmet.filter(a => new Date(a.created_at) >= agora);
+              
+              // Mostrar alertas apenas de hoje para frente
+              const hoje_comeco = new Date();
+              hoje_comeco.setHours(0,0,0,0);
+              
+              inmetAlertas = todosInmet.filter(a => new Date(a.created_at) >= hoje_comeco);
             }
           } catch (e) { console.error("Erro INMET", e); }
         }
+
+        const hoje_comeco_ref = new Date();
+        hoje_comeco_ref.setHours(0,0,0,0);
 
         // 2. Buscar Agenda (Eventos + Lembretes)
         let agendaAlertas: Alerta[] = [];
@@ -45,7 +53,7 @@ export default function AvisosPage() {
               agendaAlertas = agendaData
                 .filter((item: any) => {
                   const itemDate = new Date(item.data_evento);
-                  if (itemDate < agora) return false;
+                  if (itemDate < hoje_comeco_ref) return false;
                   
                   if (filtroAtivo === "lembretes") return item.tipo === "lembrete";
                   if (filtroAtivo === "eventos") return item.tipo === "evento";
@@ -69,27 +77,40 @@ export default function AvisosPage() {
         let previsaoAlertas: Alerta[] = [];
         if (filtroAtivo === "todos" || filtroAtivo === "clima") {
           try {
-            const climaRes = await fetch(`${baseUrl}/api/clima/previsao?lat=-22.725&lon=-47.647&days=${diasClima}`);
+            // Tentar pegar coordenadas do usuário do localStorage
+            const userJson = localStorage.getItem("agronexus_user");
+            let lat = -22.725;
+            let lon = -47.647;
+            
+            if (userJson) {
+              const userData = JSON.parse(userJson);
+              if (userData.municipio?.lat && userData.municipio?.lon) {
+                lat = userData.municipio.lat;
+                lon = userData.municipio.lon;
+              }
+            }
+
+            const climaRes = await fetch(`${baseUrl}/api/clima/previsao?lat=${lat}&lon=${lon}&days=${diasClima}`);
             if (climaRes.ok) {
               const climaData = await climaRes.json();
               if (climaData.dados && climaData.dados.length > 0) {
                 climaData.dados.forEach((dia: any, index: number) => {
-                  const diaDate = new Date(dia.data);
+                  const diaDate = new Date(dia.data + 'T12:00:00');
                   const hoje_comeco = new Date();
                   hoje_comeco.setHours(0,0,0,0);
                   if (diaDate < hoje_comeco) return;
 
-                  // Alerta de Chuva
-                  if (dia.precipitacao_mm && dia.precipitacao_mm >= 15) {
+                  // Alerta de Chuva (Threshold mais baixo para aparecer mais)
+                  if (dia.precipitacao_mm && dia.precipitacao_mm >= 2) {
                     previsaoAlertas.push({
                       id: `chuva-${dia.data}`,
                       propriedade_id: "1",
                       tipo: 'clima',
-                      mensagem: `Previsão de chuva forte (${dia.precipitacao_mm}mm) para ${diaDate.toLocaleDateString('pt-BR')}`,
-                      severidade: dia.precipitacao_mm >= 30 ? 'critico' : 'aviso',
+                      mensagem: `Previsão de ${dia.precipitacao_mm >= 15 ? 'chuva forte' : 'chuva'} (${dia.precipitacao_mm}mm) para ${diaDate.toLocaleDateString('pt-BR')}`,
+                      severidade: dia.precipitacao_mm >= 20 ? 'critico' : dia.precipitacao_mm >= 8 ? 'aviso' : 'info',
                       fonte: 'Previsão do Tempo',
                       lido: false,
-                      created_at: new Date(dia.data).toISOString()
+                      created_at: new Date(dia.data + 'T23:59:59').toISOString()
                     });
                   }
 
@@ -97,32 +118,46 @@ export default function AvisosPage() {
                   if (index > 0) {
                     const diaAnterior = climaData.dados[index - 1];
                     const diff = Math.abs(dia.temp_max_c - diaAnterior.temp_max_c);
-                    if (diff >= 7) {
+                    if (diff >= 4) {
                       previsaoAlertas.push({
                         id: `temp-${dia.data}`,
                         propriedade_id: "1",
                         tipo: 'clima',
-                        mensagem: `Mudança brusca de temperatura (${dia.temp_max_c > diaAnterior.temp_max_c ? 'Aumento' : 'Queda'} de ${Math.round(diff)}°C) em ${diaDate.toLocaleDateString('pt-BR')}`,
-                        severidade: 'aviso',
+                        mensagem: `Mudança de temperatura (${dia.temp_max_c > diaAnterior.temp_max_c ? 'Aumento' : 'Queda'} de ${Math.round(diff)}°C) em ${diaDate.toLocaleDateString('pt-BR')}`,
+                        severidade: diff >= 8 ? 'aviso' : 'info',
                         fonte: 'Previsão do Tempo',
                         lido: false,
-                        created_at: new Date(dia.data).toISOString()
+                        created_at: new Date(dia.data + 'T23:59:59').toISOString()
                       });
                     }
                   }
 
                   // Alerta de Temperatura Extrema
-                  if (dia.temp_max_c >= 35 || dia.temp_min_c <= 10) {
+                  if (dia.temp_max_c >= 30 || dia.temp_min_c <= 15) {
                     previsaoAlertas.push({
                         id: `extrema-${dia.data}`,
                         propriedade_id: "1",
                         tipo: 'clima',
-                        mensagem: `Temperatura Extrema em ${diaDate.toLocaleDateString('pt-BR')}: ${Math.round(dia.temp_min_c)}°C - ${Math.round(dia.temp_max_c)}°C`,
-                        severidade: 'critico',
+                        mensagem: `Temperatura ${dia.temp_max_c >= 30 ? 'Elevada' : 'Baixa'} em ${diaDate.toLocaleDateString('pt-BR')}: ${Math.round(dia.temp_min_c)}°C - ${Math.round(dia.temp_max_c)}°C`,
+                        severidade: (dia.temp_max_c >= 35 || dia.temp_min_c <= 10) ? 'critico' : 'aviso',
                         fonte: 'Previsão do Tempo',
                         lido: false,
-                        created_at: new Date(dia.data).toISOString()
+                        created_at: new Date(dia.data + 'T23:59:59').toISOString()
                       });
+                  }
+
+                  // Informativo de Céu Limpo
+                  if (!dia.precipitacao_mm || dia.precipitacao_mm < 1) {
+                    previsaoAlertas.push({
+                      id: `limpo-${dia.data}`,
+                      propriedade_id: "1",
+                      tipo: 'clima',
+                      mensagem: `Tempo firme e seco previsto para ${diaDate.toLocaleDateString('pt-BR')}. Ideal para atividades de campo.`,
+                      severidade: 'info',
+                      fonte: 'Previsão do Tempo',
+                      lido: false,
+                      created_at: new Date(dia.data + 'T23:59:59').toISOString()
+                    });
                   }
                 });
               }
@@ -130,10 +165,63 @@ export default function AvisosPage() {
           } catch (e) { console.error("Erro Previsão Chuva", e); }
         }
 
-        // Mesclar tudo e ordenar
-        const todosAlertas = [...inmetAlertas, ...agendaAlertas, ...previsaoAlertas].sort((a, b) => {
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        });
+        // 4. Gerar Alertas Automáticos de Estágios de Culturas
+        let culturaAlertas: Alerta[] = [];
+        if (filtroAtivo === "todos") {
+          try {
+            const cultRes = await fetch(`${baseUrl}/api/culturas`);
+            if (cultRes.ok) {
+              const culturas = await cultRes.json();
+              culturas.forEach((c: any) => {
+                if (c.status === 'colhido' || c.status === 'perdido' || !c.data_plantio || !c.data_colheita_prev) return;
+
+                const inicio = new Date(c.data_plantio + 'T12:00:00').getTime();
+                const fim = new Date(c.data_colheita_prev + 'T12:00:00').getTime();
+                const total = fim - inicio;
+                const decorrido = agora.getTime() - inicio;
+                const percent = Math.round((decorrido / total) * 100);
+
+                if (percent >= 0 && percent <= 100) {
+                  let msg = "";
+                  let sev: 'info' | 'aviso' | 'critico' = 'info';
+
+                  if (percent < 5) {
+                    msg = `Sua lavoura de ${c.nome} está em fase de germinação. Monitore a umidade do solo.`;
+                  } else if (percent > 60 && percent < 65) {
+                    msg = `${c.nome} entrando em fase de maturação. Fique atento a pragas e doenças de fim de ciclo.`;
+                    sev = 'aviso';
+                  } else if (percent > 90) {
+                    msg = `Ponto de Colheita atingido para ${c.nome}! Prepare as máquinas e a logística de transporte.`;
+                    sev = 'critico';
+                  }
+
+                  if (msg) {
+                    culturaAlertas.push({
+                      id: `cultura-${c.id}-${percent}`,
+                      propriedade_id: c.propriedade_id,
+                      tipo: 'geral',
+                      mensagem: msg,
+                      severidade: sev,
+                      fonte: 'Monitoramento de Lavouras',
+                      lido: false,
+                      created_at: agora.toISOString()
+                    });
+                  }
+                }
+              });
+            }
+          } catch (e) { console.error("Erro Alertas Culturas", e); }
+        }
+
+        // Mesclar tudo, filtrar apenas o que ainda não passou (considerando o início do dia de hoje) e ordenar
+        const hoje_comeco_limite = new Date();
+        hoje_comeco_limite.setHours(0, 0, 0, 0);
+
+        const todosAlertas = [...inmetAlertas, ...agendaAlertas, ...previsaoAlertas, ...culturaAlertas]
+          .filter(a => new Date(a.created_at) >= hoje_comeco_limite)
+          .sort((a, b) => {
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          });
         
         setAlertas(todosAlertas);
       } catch (err) {

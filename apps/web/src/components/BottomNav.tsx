@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CloudSun, BarChart3, Newspaper, CalendarDays } from "lucide-react";
+import { Home, CloudSun, LayoutGrid, Newspaper, CalendarDays } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -10,7 +10,7 @@ export default function BottomNav() {
   const links = [
     { name: "Início", href: "/", icon: Home },
     { name: "Clima", href: "/clima", icon: CloudSun },
-    { name: "Impactos", href: "/impactos", icon: BarChart3 },
+    { name: "Gestão", href: "/gestao", icon: LayoutGrid },
     { name: "Notícias", href: "/noticias", icon: Newspaper },
     { name: "Agenda", href: "/agenda", icon: CalendarDays },
   ];

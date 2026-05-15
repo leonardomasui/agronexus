@@ -33,7 +33,12 @@ export default function LavourasPage() {
     "feijão": 3,
     "café": 12,
     "cana": 12,
-    "algodão": 6
+    "cana-de-açúcar": 12,
+    "algodão": 6,
+    "arroz": 4,
+    "mandioca": 12,
+    "sorgo": 4,
+    "girassol": 4
   };
 
   useEffect(() => {
@@ -41,7 +46,7 @@ export default function LavourasPage() {
       const nomeLimpo = nome.toLowerCase().trim();
       const meses = CICLOS_MESES[nomeLimpo] || 4;
       
-      const dataBase = new Date(dataPlantio);
+      const dataBase = new Date(dataPlantio + 'T12:00:00');
       dataBase.setMonth(dataBase.getMonth() + meses);
       
       setDataColheitaPrev(dataBase.toISOString().split('T')[0]);
@@ -79,8 +84,8 @@ export default function LavourasPage() {
     setNome(item.nome);
     setVariedade(item.variedade || "");
     setArea(item.area_ha.toString());
-    setDataPlantio(item.data_plantio ? new Date(item.data_plantio).toISOString().split('T')[0] : "");
-    setDataColheitaPrev(item.data_colheita_prev ? new Date(item.data_colheita_prev).toISOString().split('T')[0] : "");
+    setDataPlantio(item.data_plantio ? new Date(item.data_plantio + 'T12:00:00').toISOString().split('T')[0] : "");
+    setDataColheitaPrev(item.data_colheita_prev ? new Date(item.data_colheita_prev + 'T12:00:00').toISOString().split('T')[0] : "");
     setStatus(item.status);
     setIsModalOpen(true);
   };
@@ -136,6 +141,24 @@ export default function LavourasPage() {
       });
 
       if (res.ok) {
+        // Se for nova lavoura, criar lembrete automático na agenda
+        if (!editingId && dataColheitaPrev) {
+          try {
+            await fetch(`${apiUrl}/api/agenda`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                titulo: `Colheita: ${nome}`,
+                tipo: 'lembrete',
+                data_evento: `${dataColheitaPrev}T08:00:00Z`,
+                descricao: `Data estimada de colheita para a lavoura de ${nome} (${variedade || 'Variedade Comum'}).`
+              }),
+            });
+          } catch (e) {
+            console.error("Erro ao criar lembrete automático", e);
+          }
+        }
+
         setIsModalOpen(false);
         fetchCulturas(); 
       } else {
@@ -230,25 +253,24 @@ export default function LavourasPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Status do Desenvolvimento</label>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Status Final</label>
             <select 
               value={status} 
               onChange={e => setStatus(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-agro-blue appearance-none"
             >
-              <option value="plantado">Recém Plantado</option>
-              <option value="crescimento">Em Crescimento</option>
-              <option value="colheita">Pronto para Colheita</option>
-              <option value="colhido">Colhido</option>
-              <option value="perdido">Perdido</option>
+              <option value="plantado">Automático (Acompanhar Ciclo)</option>
+              <option value="colhido">Marcar como Colhido</option>
+              <option value="perdido">Marcar como Perdido</option>
             </select>
+            <p className="text-[10px] text-gray-400 mt-1 italic">O status de crescimento é calculado automaticamente com base nas datas.</p>
           </div>
 
           {dataColheitaPrev && (
             <div className="bg-agro-blue/5 p-4 rounded-xl border border-agro-blue/10">
               <p className="text-xs font-bold text-agro-blue uppercase mb-1">Estimativa Inteligente</p>
               <p className="text-sm text-gray-700">
-                Data prevista para colheita: <span className="font-bold">{new Date(dataColheitaPrev).toLocaleDateString('pt-BR')}</span>
+                Data prevista para colheita: <span className="font-bold">{new Date(dataColheitaPrev + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
               </p>
               <p className="text-[10px] text-gray-400 mt-1 italic">*Baseado no ciclo médio para {nome}.</p>
             </div>

@@ -16,30 +16,45 @@ export default function CropCard({ cultura, onEdit, onDelete }: CropCardProps) {
     return <Leaf size={24} />;
   };
 
-  // Cores de status
-  const getStatusColor = () => {
-    switch (cultura.status) {
-      case 'plantado': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'crescimento': return 'bg-agro-green/20 text-agro-green border-agro-green/30';
-      case 'colheita': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
-      case 'colhido': return 'bg-gray-100 text-gray-700 border-gray-300';
-      case 'perdido': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+  // Cálculo Automático de Progresso e Status
+  const getAutoData = () => {
+    if (!cultura.data_plantio || !cultura.data_colheita_prev) {
+      return { progresso: 0, statusLabel: cultura.status, color: 'bg-gray-100 text-gray-700' };
     }
+
+    // Se o status for final (colhido ou perdido), respeitamos
+    if (cultura.status === 'colhido') return { progresso: 100, statusLabel: 'Colhido', color: 'bg-gray-100 text-gray-700 border-gray-300' };
+    if (cultura.status === 'perdido') return { progresso: 0, statusLabel: 'Perdido', color: 'bg-red-100 text-red-700 border-red-200' };
+
+    const inicio = new Date(cultura.data_plantio + 'T12:00:00').getTime();
+    const fim = new Date(cultura.data_colheita_prev + 'T12:00:00').getTime();
+    const agora = new Date().getTime();
+
+    if (agora < inicio) return { progresso: 0, statusLabel: 'Planejado', color: 'bg-blue-50 text-blue-500' };
+    
+    const total = fim - inicio;
+    const decorrido = agora - inicio;
+    let percent = Math.min(Math.round((decorrido / total) * 100), 100);
+    if (percent < 0) percent = 0;
+
+    let label = 'Em Crescimento';
+    let color = 'bg-agro-green/20 text-agro-green border-agro-green/30';
+
+    if (percent < 15) {
+      label = 'Germinação';
+      color = 'bg-blue-100 text-blue-700 border-blue-200';
+    } else if (percent > 90) {
+      label = 'Ponto de Colheita';
+      color = 'bg-yellow-100 text-yellow-700 border-yellow-300';
+    } else if (percent > 60) {
+      label = 'Maturação';
+      color = 'bg-green-100 text-green-700 border-green-200';
+    }
+
+    return { progresso: percent, statusLabel: label, color };
   };
 
-  // Simulação de progresso baseada no status (apenas para o mock visual)
-  const getProgress = () => {
-    switch (cultura.status) {
-      case 'plantado': return 10;
-      case 'crescimento': return 60;
-      case 'colheita': return 95;
-      case 'colhido': return 100;
-      default: return 0;
-    }
-  };
-
-  const statusLabel = cultura.status.charAt(0).toUpperCase() + cultura.status.slice(1);
+  const { progresso, statusLabel, color } = getAutoData();
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-agro-gray relative overflow-hidden group hover:shadow-md transition-shadow">
@@ -74,7 +89,7 @@ export default function CropCard({ cultura, onEdit, onDelete }: CropCardProps) {
             <p className="text-sm text-gray-500 font-medium">{cultura.variedade || "Variedade Comum"}</p>
           </div>
         </div>
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-md border uppercase tracking-wider ${getStatusColor()}`}>
+        <span className={`text-[10px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${color}`}>
           {statusLabel}
         </span>
       </div>
@@ -88,11 +103,11 @@ export default function CropCard({ cultura, onEdit, onDelete }: CropCardProps) {
         <div className="grid grid-cols-1 gap-1 border-t border-gray-50 pt-2 mt-2">
           <div className="flex items-center gap-2 text-gray-500">
             <Calendar size={14} className="text-gray-400" />
-            <span className="text-xs font-medium">Plantado: {cultura.data_plantio ? new Date(cultura.data_plantio).toLocaleDateString('pt-BR') : '--'}</span>
+            <span className="text-xs font-medium">Plantado: {cultura.data_plantio ? new Date(cultura.data_plantio + 'T12:00:00').toLocaleDateString('pt-BR') : '--'}</span>
           </div>
           <div className="flex items-center gap-2 text-agro-blue">
             <Calendar size={14} className="text-blue-400" />
-            <span className="text-xs font-bold">Colheita Prevista: {cultura.data_colheita_prev ? new Date(cultura.data_colheita_prev).toLocaleDateString('pt-BR') : '--'}</span>
+            <span className="text-xs font-bold">Colheita Prevista: {cultura.data_colheita_prev ? new Date(cultura.data_colheita_prev + 'T12:00:00').toLocaleDateString('pt-BR') : '--'}</span>
           </div>
         </div>
       </div>
@@ -101,12 +116,12 @@ export default function CropCard({ cultura, onEdit, onDelete }: CropCardProps) {
       <div>
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Desenvolvimento</span>
-          <span className="text-xs font-bold text-agro-blue">{getProgress()}%</span>
+          <span className="text-xs font-bold text-agro-blue">{progresso}%</span>
         </div>
         <div className="w-full bg-agro-gray rounded-full h-2 overflow-hidden">
           <div 
             className="bg-gradient-to-r from-agro-green to-[#4ade80] h-2 rounded-full transition-all duration-1000 ease-out" 
-            style={{ width: `${getProgress()}%` }}
+            style={{ width: `${progresso}%` }}
           ></div>
         </div>
       </div>

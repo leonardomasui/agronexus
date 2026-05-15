@@ -22,7 +22,7 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/animais
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { especie, raca, quantidade, observacoes, data_entrada, ultima_visita_vet, motivo_visita_vet } = req.body;
+    const { especie, raca, quantidade, observacoes, data_entrada, ultima_visita_vet, motivo_visita_vet, historico_vacinal, custo_acumulado } = req.body;
     
     let { data: propriedades } = await supabase.from('propriedades').select('id').limit(1);
     let propriedadeId = propriedades?.[0]?.id;
@@ -42,6 +42,8 @@ router.post('/', async (req: Request, res: Response) => {
         data_entrada: data_entrada || null,
         ultima_visita_vet: ultima_visita_vet || null,
         motivo_visita_vet: motivo_visita_vet || null,
+        historico_vacinal: historico_vacinal || [],
+        custo_acumulado: Number(custo_acumulado) || 0
       })
       .select()
       .single();
@@ -140,7 +142,7 @@ router.delete('/rotinas/:id', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { especie, raca, quantidade, observacoes, data_entrada, ultima_visita_vet, motivo_visita_vet } = req.body;
+    const { especie, raca, quantidade, observacoes, data_entrada, ultima_visita_vet, motivo_visita_vet, historico_vacinal, custo_acumulado } = req.body;
 
     const { data, error } = await supabase
       .from('animais')
@@ -152,7 +154,8 @@ router.put('/:id', async (req: Request, res: Response) => {
         data_entrada: data_entrada || null,
         ultima_visita_vet: ultima_visita_vet || null,
         motivo_visita_vet: motivo_visita_vet || null,
-        updated_at: new Date()
+        historico_vacinal: historico_vacinal || [],
+        custo_acumulado: Number(custo_acumulado) || 0
       })
       .eq('id', id)
       .select()

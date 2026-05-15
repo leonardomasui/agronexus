@@ -1,11 +1,22 @@
+import { useEffect, useState } from "react";
 import { BellRing, User, Tractor, Leaf, PawPrint, Sprout } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Header() {
+  const [userName, setUserName] = useState("Produtor");
   // Ícones para o padrão de fundo
   const Icons = [Tractor, Leaf, PawPrint, Sprout];
   const patternArray = Array.from({ length: 30 }); // Criar 30 slots para preencher bem o cabeçalho
+
+  useEffect(() => {
+    const localUser = localStorage.getItem("agronexus_user");
+    if (localUser) {
+      const parsed = JSON.parse(localUser);
+      if (parsed.nome) setUserName(parsed.nome);
+      else if (parsed.uuid) setUserName("João Produtor"); // Fallback se tiver perfil mas sem nome
+    }
+  }, []);
 
   return (
     <header className="bg-agro-blue text-white pt-10 pb-6 px-6 rounded-b-3xl shadow-md relative overflow-hidden z-10">
@@ -37,7 +48,7 @@ export default function Header() {
           </div>
           <div>
             <p className="text-white/80 text-xs font-medium">Bem-vindo(a),</p>
-            <h1 className="text-xl font-bold tracking-tight">João Produtor</h1>
+            <h1 className="text-xl font-bold tracking-tight">{userName}</h1>
           </div>
         </div>
         <div className="flex items-center gap-3">

@@ -6,10 +6,8 @@ import { useState } from "react";
 
 // Estendendo o tipo para suportar os novos campos
 export interface AnimalComRotina extends Animal {
-  rotinas?: { id: string; tarefa: string; concluido: boolean }[];
-  data_entrada?: string;
-  ultima_visita_vet?: string;
-  motivo_visita_vet?: string;
+  // O tipo Animal agora contém todos os campos necessários.
+  // Mantemos a interface para compatibilidade de exportação se necessário.
 }
 
 interface AnimalCardProps {
@@ -125,20 +123,27 @@ export default function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps
       <div className="p-5 relative">
         <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-20 blur-xl ${colors.bg}`}></div>
 
-        <div className="flex justify-between items-start mb-4 relative z-10 pr-16">
-          <div className="flex items-center gap-3">
-            <div className={`${colors.iconBg} w-12 h-12 rounded-xl flex items-center justify-center border`}>
+        <div className="relative z-10 pr-16 mb-5">
+          <div className="flex items-center gap-4 mb-4">
+            <div className={`${colors.iconBg} w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-sm shrink-0`}>
               {getIcon()}
             </div>
             <div>
               <h3 className="font-bold text-agro-black text-lg leading-tight capitalize">{animal.especie}</h3>
-              <p className="text-sm text-gray-500 font-medium">{animal.raca || "Raça Comum"}</p>
+              <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">{animal.raca || "Raça Comum"}</p>
             </div>
           </div>
           
-          <div className="bg-agro-black text-white px-3 py-1.5 rounded-lg flex flex-col items-center shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-gray-300">Cabeças</span>
-            <span className="text-sm font-bold">{animal.quantidade}</span>
+          <div className="flex gap-3">
+            <div className="flex-1 bg-agro-black text-white px-4 py-2 rounded-xl flex flex-col items-start shadow-sm">
+              <span className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Cabeças</span>
+              <span className="text-base font-bold">{animal.quantidade}</span>
+            </div>
+
+            <div className="flex-[1.5] bg-agro-blue text-white px-4 py-2 rounded-xl flex flex-col items-start shadow-sm">
+              <span className="text-[10px] uppercase font-bold text-blue-200 mb-0.5 tracking-wider">Investimento</span>
+              <span className="text-base font-bold leading-none">R$ {animal.custo_acumulado?.toLocaleString('pt-BR') || '0'}</span>
+            </div>
           </div>
         </div>
 
@@ -215,6 +220,22 @@ export default function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps
               <input type="text" value={novaTarefa} onChange={(e) => setNovaTarefa(e.target.value)} placeholder="Ex: Verificar ração..." className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-agro-blue/50" />
               <button type="submit" disabled={!novaTarefa.trim()} className="bg-agro-green text-white p-2 rounded-lg disabled:opacity-50 transition-opacity"><Plus size={20} /></button>
             </form>
+          )}
+          {/* Histórico Vacinal */}
+          {animal.historico_vacinal && animal.historico_vacinal.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-[10px] font-black text-blue-600 uppercase mb-2 flex items-center gap-1">
+                <Activity size={12} /> Histórico Vacinal
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {animal.historico_vacinal.map((v, i) => (
+                  <div key={i} className="flex justify-between items-center bg-blue-50/50 px-3 py-2 rounded-xl text-xs">
+                    <span className="font-bold text-blue-800">{v.vacina}</span>
+                    <span className="text-blue-600 font-medium">{new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

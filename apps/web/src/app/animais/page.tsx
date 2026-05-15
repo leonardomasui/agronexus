@@ -25,6 +25,10 @@ export default function AnimaisPage() {
   const [dataEntrada, setDataEntrada] = useState("");
   const [ultimaVisitaVet, setUltimaVisitaVet] = useState("");
   const [motivoVisitaVet, setMotivoVisitaVet] = useState("");
+  const [custoAcumulado, setCustoAcumulado] = useState("");
+  const [historicoVacinal, setHistoricoVacinal] = useState<{ vacina: string; data: string; lote?: string }[]>([]);
+  const [novaVacina, setNovaVacina] = useState("");
+  const [dataVacina, setDataVacina] = useState("");
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
 
@@ -51,6 +55,7 @@ export default function AnimaisPage() {
     setEditingId(null);
     setEspecie("gado"); setQuantidade(""); setRaca(""); setObservacoes("");
     setDataEntrada(""); setUltimaVisitaVet(""); setMotivoVisitaVet("");
+    setCustoAcumulado(""); setHistoricoVacinal([]);
     setIsModalOpen(true);
   };
 
@@ -63,6 +68,8 @@ export default function AnimaisPage() {
     setDataEntrada(item.data_entrada || "");
     setUltimaVisitaVet(item.ultima_visita_vet || "");
     setMotivoVisitaVet(item.motivo_visita_vet || "");
+    setCustoAcumulado(item.custo_acumulado?.toString() || "");
+    setHistoricoVacinal(item.historico_vacinal || []);
     setIsModalOpen(true);
   };
 
@@ -109,7 +116,9 @@ export default function AnimaisPage() {
           observacoes,
           data_entrada: dataEntrada || null,
           ultima_visita_vet: ultimaVisitaVet || null,
-          motivo_visita_vet: motivoVisitaVet || null
+          motivo_visita_vet: motivoVisitaVet || null,
+          historico_vacinal: historicoVacinal,
+          custo_acumulado: Number(custoAcumulado) || 0
         }),
       });
 
@@ -223,6 +232,43 @@ export default function AnimaisPage() {
               <label className="block text-sm font-bold text-gray-700 mb-1">Data de Entrada</label>
               <input value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-agro-blue" />
             </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-3">
+            <p className="text-xs font-bold text-blue-600 uppercase flex items-center gap-1">
+              <Plus size={14} /> Histórico Vacinal
+            </p>
+            <div className="flex gap-2">
+              <input value={novaVacina} onChange={e => setNovaVacina(e.target.value)} type="text" placeholder="Nome da Vacina" className="flex-1 bg-white border border-blue-100 rounded-xl px-3 py-2 text-xs focus:outline-none" />
+              <input value={dataVacina} onChange={e => setDataVacina(e.target.value)} type="date" className="bg-white border border-blue-100 rounded-xl px-3 py-2 text-xs focus:outline-none" />
+              <button 
+                type="button"
+                onClick={() => {
+                  if (novaVacina && dataVacina) {
+                    setHistoricoVacinal([...historicoVacinal, { vacina: novaVacina, data: dataVacina }]);
+                    setNovaVacina(""); setDataVacina("");
+                  }
+                }}
+                className="bg-agro-blue text-white p-2 rounded-xl"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            {historicoVacinal.length > 0 && (
+              <div className="space-y-1 mt-2">
+                {historicoVacinal.map((v, i) => (
+                  <div key={i} className="flex justify-between items-center bg-white/50 px-3 py-1 rounded-lg text-[10px] font-bold text-blue-700">
+                    <span>{v.vacina}</span>
+                    <span>{new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Custo Acumulado (R$)</label>
+            <input value={custoAcumulado} onChange={e => setCustoAcumulado(e.target.value)} type="number" placeholder="Ex: 5000.00" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-agro-blue" />
           </div>
 
           <div className="bg-red-50 p-4 rounded-2xl border border-red-100 space-y-3">

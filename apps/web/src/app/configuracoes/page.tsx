@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import { MapPin, Sprout, PawPrint, Save, Loader2, ChevronRight } from "lucide-react";
 
@@ -8,6 +9,7 @@ const CULTURAS_OPCOES = ["Soja", "Milho", "Café", "Cana-de-açúcar", "Algodão
 const ANIMAIS_OPCOES = ["Gado de corte", "Gado leiteiro", "Suínos", "Frangos de corte", "Galinhas poedeiras", "Peixes (piscicultura)", "Caprinos/Ovinos", "Outros"];
 
 export default function ConfiguracoesPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -69,6 +71,13 @@ export default function ConfiguracoesPage() {
     setSaving(true);
     localStorage.setItem("agronexus_user", JSON.stringify(user));
     
+    // Limpar caches de clima antigos para forçar atualização
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('agro_weather_')) {
+        localStorage.removeItem(key);
+      }
+    });
+
     // Sync com banco
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
@@ -77,9 +86,14 @@ export default function ConfiguracoesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(user)
       });
-      alert("Configurações salvas com sucesso!");
+      
+      // Notificar outros componentes e redirecionar
+      window.dispatchEvent(new CustomEvent("agronexus_settings_updated"));
+      router.push("/");
     } catch (e) {
       console.error(e);
+      alert("Configurações salvas localmente, mas houve erro na sincronização.");
+      router.push("/");
     } finally {
       setSaving(false);
     }
