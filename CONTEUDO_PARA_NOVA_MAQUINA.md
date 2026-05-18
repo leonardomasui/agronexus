@@ -21,10 +21,10 @@ Este documento contém tudo o que foi desenvolvido até agora para garantir que 
 - **Nova Aba "Gestão"**: Substituiu a antiga aba de "Impactos" no menu inferior.
 - **Dashboard de Operações**: Nova página `/gestao` consolidando resumos de Lavouras (Hectares/Ativas) e Rebanho (Cabeças/Lotes) com acesso rápido aos gerenciadores.
 
-### 3. Sincronização e UI
-- **Tipos Consolidados**: Pacote `@agronexus/shared` agora possui interfaces completas para Animais e Rotinas.
-- **Navegação**: Menu inferior 100% funcional e sincronizado com o roteamento do Next.js.
-- **Rich Aesthetics**: Design responsivo com paleta de cores harmoniosa e tipografia normalizada.
+### 4. Inteligência e Desenvolvimento (Claude Code)
+- **Workflow Agêntico**: Implementada integração com a CLI do Claude Code Pro.
+- **Arquivo de Contexto**: Criado `CLAUDE.md` na raiz para que o agente entenda automaticamente a arquitetura monorepo, padrões de código e comandos do projeto.
+- **Gráficos Otimizados**: Gráfico de precipitação ajustado para exibir média mensal e legendas simplificadas (apenas nomes dos meses).
 
 ---
 
@@ -41,6 +41,12 @@ API_PORT=3001
 # Web
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
+
+### 🤖 Configuração do Claude Code (Pro)
+Para continuar usando o assistente avançado na máquina nova:
+1.  **Instalação**: `npm install -g @anthropic-ai/claude-code`
+2.  **Autenticação**: `claude auth login` (vincular sua conta Claude Pro).
+3.  **Uso**: Basta digitar `claude` na raiz do projeto. Ele lerá o arquivo `CLAUDE.md` automaticamente.
 
 ### Banco de Dados (Supabase)
 Existem 3 arquivos de migração em `apps/api/src/database/migrations/`:
@@ -64,4 +70,4 @@ Existem 3 arquivos de migração em `apps/api/src/database/migrations/`:
 2. **Relatórios**: Implementar exportação de PDF para os lotes de animais e histórico de produção.
 3. **Lógica de Impactos**: Re-implementar a lógica de riscos climáticos dentro da nova aba de Gestão ou em uma subseção.
 
-**Documento atualizado em 14/05/2026 às 17:10** — *AgroNexus Team*
+**Documento atualizado em 15/05/2026 às 16:15** — *AgroNexus Team*

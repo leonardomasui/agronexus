@@ -47,9 +47,14 @@ export default function LavourasPage() {
       const meses = CICLOS_MESES[nomeLimpo] || 4;
       
       const dataBase = new Date(dataPlantio + 'T12:00:00');
-      dataBase.setMonth(dataBase.getMonth() + meses);
-      
-      setDataColheitaPrev(dataBase.toISOString().split('T')[0]);
+      if (!isNaN(dataBase.getTime())) {
+        dataBase.setMonth(dataBase.getMonth() + meses);
+        setDataColheitaPrev(dataBase.toISOString().split('T')[0]);
+      } else {
+        setDataColheitaPrev("");
+      }
+    } else {
+      setDataColheitaPrev("");
     }
   }, [nome, dataPlantio]);
 
